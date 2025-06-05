@@ -15,18 +15,25 @@ def modify_entity_groups(entity_uuid):
 
     # Remove entity from Pre-Approved Group
     remove_url = f"{TURBOHOST}/api/groups/{PRE_APPROVED_GROUP_ID}/entities/{entity_uuid}"
+    print(f"Calling DELETE: {remove_url}")
     remove_resp = requests.delete(remove_url, auth=auth)
+    print("Remove response:", remove_resp.status_code, remove_resp.text)
+
     if remove_resp.status_code not in [200, 204]:
         return remove_resp.status_code, f"Failed to remove entity from Pre-Approved Group: {remove_resp.text}"
 
     # Add entity to Approved Group
     add_url = f"{TURBOHOST}/api/groups/{APPROVED_GROUP_ID}/entities"
     add_payload = {"entityIds": [entity_uuid]}
+    print(f"Calling POST: {add_url} with payload: {add_payload}")
     add_resp = requests.post(add_url, auth=auth, json=add_payload)
+    print("Add response:", add_resp.status_code, add_resp.text)
+
     if add_resp.status_code not in [200, 204]:
         return add_resp.status_code, f"Failed to add entity to Approved Group: {add_resp.text}"
 
     return 200, "Entity moved successfully"
+
 
 @app.route('/', methods=['POST'])
 def handle_event():
