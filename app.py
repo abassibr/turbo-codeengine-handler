@@ -11,28 +11,25 @@ PRE_APPROVED_GROUP_ID = os.getenv('PRE_APPROVED_GROUP_ID')
 APPROVED_GROUP_ID = os.getenv('APPROVED_GROUP_ID')
 
 def modify_entity_groups(entity_uuid):
-    auth = (TURBOUSER, TURBOPASS)
+    try:
+        auth = (TURBOUSER, TURBOPASS)
 
-    # Remove entity from Pre-Approved Group
-    remove_url = f"{TURBOHOST}/api/groups/{PRE_APPROVED_GROUP_ID}/entities/{entity_uuid}"
-    print(f"Calling DELETE: {remove_url}")
-    remove_resp = requests.delete(remove_url, auth=auth)
-    print("Remove response:", remove_resp.status_code, remove_resp.text)
+        remove_url = f"{TURBOHOST}/api/groups/{PRE_APPROVED_GROUP_ID}/entities/{entity_uuid}"
+        remove_resp = requests.delete(remove_url, auth=auth, timeout=10)
+        if remove_resp.status_code not in [200, 204]:
+            return remove_resp.status_code, f"Failed to remove entity: {remove_resp.text}"
 
-    if remove_resp.status_code not in [200, 204]:
-        return remove_resp.status_code, f"Failed to remove entity from Pre-Approved Group: {remove_resp.text}"
+        add_url = f"{TURBOHOST}/api/groups/{APPROVED_GROUP_ID}/entities"
+        add_payload = {"entityIds": [entity_uuid]}
+        add_resp = requests.post(add_url, auth=auth, json=add_payload, timeout=10)
+        if add_resp.status_code not in [200, 204]:
+            return add_resp.status_code, f"Failed to add entity: {add_resp.text}"
 
-    # Add entity to Approved Group
-    add_url = f"{TURBOHOST}/api/groups/{APPROVED_GROUP_ID}/entities"
-    add_payload = {"entityIds": [entity_uuid]}
-    print(f"Calling POST: {add_url} with payload: {add_payload}")
-    add_resp = requests.post(add_url, auth=auth, json=add_payload)
-    print("Add response:", add_resp.status_code, add_resp.text)
+        return 200, "Entity moved successfully"
 
-    if add_resp.status_code not in [200, 204]:
-        return add_resp.status_code, f"Failed to add entity to Approved Group: {add_resp.text}"
+    except Exception as e:
+        return 500, f"Exception occurred: {str(e)}"
 
-    return 200, "Entity moved successfully"
 
 
 @app.route('/', methods=['POST'])
