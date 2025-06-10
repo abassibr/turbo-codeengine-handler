@@ -10,18 +10,26 @@ TURBOPASS = os.getenv('TURBOPASS')
 PRE_APPROVED_GROUP_ID = os.getenv('PRE_APPROVED_GROUP_ID')
 APPROVED_GROUP_ID = os.getenv('APPROVED_GROUP_ID')
 
+
+
 def modify_entity_groups(entity_uuid):
     try:
         auth = (TURBOUSER, TURBOPASS)
 
-        remove_url = f"{TURBOHOST}/api/groups/{PRE_APPROVED_GROUP_ID}/entities/{entity_uuid}"
-        remove_resp = requests.delete(remove_url, auth=auth, timeout=10)
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
+
+        remove_url = f"{TURBOHOST}/vmturbo/rest/groups/{PRE_APPROVED_GROUP_ID}/entities/{entity_uuid}"
+        remove_resp = requests.delete(remove_url, auth=auth, headers=headers, timeout=10)
+        print(f"Remove response: {remove_resp.status_code} - {remove_resp.text}")
         if remove_resp.status_code not in [200, 204]:
             return remove_resp.status_code, f"Failed to remove entity: {remove_resp.text}"
-
-        add_url = f"{TURBOHOST}/api/groups/{APPROVED_GROUP_ID}/entities"
+        add_url = f"{TURBOHOST}/vmturbo/rest/groups/{APPROVED_GROUP_ID}/entities"
         add_payload = {"entityIds": [entity_uuid]}
-        add_resp = requests.post(add_url, auth=auth, json=add_payload, timeout=10)
+        add_resp = requests.post(add_url, auth=auth, headers=headers, json=add_payload, timeout=10)
+        print(f"Add response: {add_resp.status_code} - {add_resp.text}")
         if add_resp.status_code not in [200, 204]:
             return add_resp.status_code, f"Failed to add entity: {add_resp.text}"
 
