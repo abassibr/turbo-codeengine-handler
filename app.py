@@ -92,6 +92,45 @@ def update_entity_group():
             logger.error(f"Unexpected error: {e}")
             return jsonify({"error": str(e)}), 500
 
+@app.route('/restore_entity_group', methods=['POST'])
+def restore_entity_group():
+    data = request.get_json()
+    if not data or 'entity_uuid' not in data:
+        return jsonify({"error": "Missing 'entity_uuid' in request body"}), 400
+
+    entity_uuid = data['entity_uuid']
+    with requests.Session() as session:
+        try:
+            login(session)
+
+            # Remove from APPROVED group if present
+            approved_members = get_group_members(session, APPROVED_GROUP_ID)
+            if entity_uuid in approved_members:
+                approved_members.remove(entity_uuid)
+                update_group_members(session, APPROVED_GROUP_ID, approved_members)
+            else:
+                logger.info(f"Entity {entity_uuid} not in approved group")
+
+            # Add back to PRE_APPROVED group if not already there
+            pre_members = get_group_members(session, PRE_APPROVED_GROUP_ID)
+            if entity_uuid not in pre_members:
+                pre_members.append(entity_uuid)
+                update_group_members(session, PRE_APPROVED_GROUP_ID, pre_members)
+            else:
+                logger.info(f"Entity {entity_uuid} already in pre-approved group")
+
+            return jsonify({"status": "success", "message": f"Entity {entity_uuid} restored successfully"}), 200
+
+        except requests.HTTPError as e:
+            try:
+                error_body = e.response.text
+            except Exception:
+                error_body = "No response body"
+            logger.error(f"HTTP error occurred: {e} - Response Body: {error_body}")
+            return jsonify({"error": str(e), "details": error_body}), 500
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
+            return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
